@@ -1,0 +1,62 @@
+name: Smart Office CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [
+          '1-auth-service', 
+          '2-room-booking-service', 
+          '3-desk-booking-service', 
+          '4-notification-service',
+          '5-analytics-service'
+        ]
+        
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Node.js
+      if: matrix.service != '5-analytics-service'
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    - name: Set up Python
+      if: matrix.service == '5-analytics-service'
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install Dependencies & Run Tests (Node.js)
+      if: matrix.service != '5-analytics-service'
+      run: |
+        cd services/${{ matrix.service }}
+        npm install
+        npm test # Assuming you have a test script
+
+    - name: Install Dependencies & Run Tests (Python)
+      if: matrix.service == '5-analytics-service'
+      run: |
+        cd services/${{ matrix.service }}
+        pip install -r requirements.txt
+        # Add test command here, e.g., pytest
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: Anish025
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./services/${{ matrix.service }}
+        push: true
+        tags: Anish025/smart-office-${{ matrix.service }}:latest

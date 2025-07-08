@@ -1,0 +1,33 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python/
+env/
+venv/
+*.egg
+*.egg-info/
+.env
+
+# AWS CDK
+cdk.out/
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+.envrc
+.idea/
+.vscode/
+*.swp
+*.swo
