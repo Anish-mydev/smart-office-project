@@ -12,9 +12,9 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-app.get('/health', (req, res) => res.status(200).send('OK'));
-app.post('/register', registerUser);
-app.post('/login', loginUser);
+app.get('/auth/health', (req, res) => res.status(200).send('Auth Service is Healthy!'));
+app.post('/auth/register', registerUser);
+app.post('/auth/login', loginUser);
 
 app.listen(port, () => {
   console.log(`Auth service listening at http://localhost:${port}`);

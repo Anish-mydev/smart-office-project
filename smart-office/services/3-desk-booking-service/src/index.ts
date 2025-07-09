@@ -13,10 +13,10 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
-app.get('/health', (req, res) => res.status(200).send('OK'));
-app.post('/bookings', authenticateToken, createBooking);
-app.get('/bookings', authenticateToken, getBookings);
-app.delete('/bookings/:bookingId', authenticateToken, deleteBooking);
+app.get('/desks/health', (req, res) => res.status(200).send('OK'));
+app.post('/desks/bookings', authenticateToken, createBooking);
+app.get('/desks/bookings', authenticateToken, getBookings);
+app.delete('/desks/bookings/:bookingId', authenticateToken, deleteBooking);
 
 app.listen(port, () => {
   console.log(`Desk booking service listening at http://localhost:${port}`);

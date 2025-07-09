@@ -69,44 +69,14 @@ services:
     volumes:
       - ./services/4-notification-service:/app
 
-  analytics-service:
-    build: ./services/5-analytics-service
-    container_name: analytics-service
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://anish:Anish#123@postgres-db:5432/smart_office_analytics
-      - SQS_QUEUE_URL=http://localhost:4566/000000000000/AnalyticsQueue_Local
-      - JWT_SECRET=your-super-secret-key-for-local-dev
-      - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=dummy
-      - AWS_SECRET_ACCESS_KEY=dummy
-    depends_on:
-      - postgres-db
-    volumes:
-      - ./services/5-analytics-service:/app
-
   dynamodb-local:
     image: amazon/dynamodb-local:latest
     container_name: dynamodb-local
     ports:
-      - "8001:8000" # Exposing on 8001 to avoid conflict with analytics service
+      - "8001:8000"
     command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
     volumes:
       - dynamodb_data:/home/dynamodblocal/data
 
-  postgres-db:
-    image: postgres:14-alpine
-    container_name: postgres-db
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=smart_office_analytics
-      - POSTGRES_USER=anish
-      - POSTGRES_PASSWORD=Anish#123
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
 volumes:
-  postgres_data:
   dynamodb_data:

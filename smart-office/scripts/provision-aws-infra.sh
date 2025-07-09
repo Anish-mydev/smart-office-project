@@ -8,7 +8,6 @@ AWS_REGION="us-east-1"
 ACCOUNT_ID="155452520827"
 SNS_TOPIC_NAME="SmartOfficeBookingEvents"
 NOTIFICATION_SQS_QUEUE_NAME="NotificationQueue"
-ANALYTICS_SQS_QUEUE_NAME="AnalyticsQueue"
 USERS_TABLE_NAME="Users"
 BOOKINGS_TABLE_NAME="Bookings"
 
@@ -53,13 +52,6 @@ NOTIFICATION_QUEUE_ARN=$(aws sqs get-queue-attributes --queue-url $NOTIFICATION_
 echo "Notification SQS Queue URL: $NOTIFICATION_QUEUE_URL"
 echo "Notification SQS Queue ARN: $NOTIFICATION_QUEUE_ARN"
 
-
-echo "Creating SQS Queue: $ANALYTICS_SQS_QUEUE_NAME..."
-ANALYTICS_QUEUE_URL=$(aws sqs create-queue --queue-name $ANALYTICS_SQS_QUEUE_NAME --region $AWS_REGION --query 'QueueUrl' --output text)
-ANALYTICS_QUEUE_ARN=$(aws sqs get-queue-attributes --queue-url $ANALYTICS_QUEUE_URL --attribute-names QueueArn --region $AWS_REGION --query 'Attributes.QueueArn' --output text)
-echo "Analytics SQS Queue URL: $ANALYTICS_QUEUE_URL"
-echo "Analytics SQS Queue ARN: $ANALYTICS_QUEUE_ARN"
-
 # --- SNS to SQS Subscriptions ---
 
 echo "Subscribing Notification Queue to SNS Topic..."
@@ -67,13 +59,6 @@ aws sns subscribe \
   --topic-arn $SNS_TOPIC_ARN \
   --protocol sqs \
   --notification-endpoint $NOTIFICATION_QUEUE_ARN \
-  --region $AWS_REGION
-
-echo "Subscribing Analytics Queue to SNS Topic..."
-aws sns subscribe \
-  --topic-arn $SNS_TOPIC_ARN \
-  --protocol sqs \
-  --notification-endpoint $ANALYTICS_QUEUE_ARN \
   --region $AWS_REGION
 
 # --- Set SQS Policy to allow SNS to send messages ---
@@ -95,32 +80,10 @@ NOTIFICATION_POLICY=$(cat <<EOF
 EOF
 )
 
-ANALYTICS_POLICY=$(cat <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": { "Service": "sns.amazonaws.com" },
-    "Action": "sqs:SendMessage",
-    "Resource": "$ANALYTICS_QUEUE_ARN",
-    "Condition": {
-      "ArnEquals": { "aws:SourceArn": "$SNS_TOPIC_ARN" }
-    }
-  }]
-}
-EOF
-)
-
 echo "Applying SQS policy for Notification Queue..."
 aws sqs set-queue-attributes \
   --queue-url $NOTIFICATION_QUEUE_URL \
   --attributes Policy="$NOTIFICATION_POLICY" \
-  --region $AWS_REGION
-
-echo "Applying SQS policy for Analytics Queue..."
-aws sqs set-queue-attributes \
-  --queue-url $ANALYTICS_QUEUE_URL \
-  --attributes Policy="$ANALYTICS_POLICY" \
   --region $AWS_REGION
 
 
@@ -129,7 +92,6 @@ echo "----------------------------------------"
 echo "Outputs:"
 echo "SNS Topic ARN: $SNS_TOPIC_ARN"
 echo "Notification SQS Queue URL: $NOTIFICATION_QUEUE_URL"
-echo "Analytics SQS Queue URL: $ANALYTICS_QUEUE_URL"
 echo "Users DynamoDB Table: $USERS_TABLE_NAME"
 echo "Bookings DynamoDB Table: $BOOKINGS_TABLE_NAME"
 echo "----------------------------------------"

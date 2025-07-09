@@ -34,7 +34,6 @@ export class SmartOfficeStack extends cdk.Stack {
     const roomBookingServiceRepo = ecr.Repository.fromRepositoryName(this, 'RoomBookingServiceRepoLookup', 'smart-office-2-room-booking-service');
     const deskBookingServiceRepo = ecr.Repository.fromRepositoryName(this, 'DeskBookingServiceRepoLookup', 'smart-office-3-desk-booking-service');
     const notificationServiceRepo = ecr.Repository.fromRepositoryName(this, 'NotificationServiceRepoLookup', 'smart-office-4-notification-service');
-    const analyticsServiceRepo = ecr.Repository.fromRepositoryName(this, 'AnalyticsServiceRepoLookup', 'smart-office-5-analytics-service');
 
     
 
@@ -53,20 +52,11 @@ export class SmartOfficeStack extends cdk.Stack {
         removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    const analyticsTable = new dynamodb.Table(this, 'AnalyticsEventsTable', {
-        tableName: 'AnalyticsEvents',
-        partitionKey: { name: 'booking_id', type: dynamodb.AttributeType.STRING },
-        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
     // --- SNS and SQS ---
     const bookingTopic = new sns.Topic(this, 'BookingTopic', { topicName: 'SmartOfficeBookingEvents' });
     const notificationQueue = new sqs.Queue(this, 'NotificationQueue', { queueName: 'NotificationQueue' });
-    const analyticsQueue = new sqs.Queue(this, 'AnalyticsQueue', { queueName: 'AnalyticsQueue' });
 
     bookingTopic.addSubscription(new cdk.aws_sns_subscriptions.SqsSubscription(notificationQueue));
-    bookingTopic.addSubscription(new cdk.aws_sns_subscriptions.SqsSubscription(analyticsQueue));
 
     // --- Load Balancer ---
     const lb = new elbv2.ApplicationLoadBalancer(this, 'SmartOfficeLB', {
@@ -118,7 +108,7 @@ export class SmartOfficeStack extends cdk.Stack {
         targets: [authService],
         priority: 1,
         conditions: [elbv2.ListenerCondition.pathPatterns(['/auth/*'])],
-        healthCheck: { path: '/health' },
+        healthCheck: { path: '/auth/health' },
     });
 
     // Room Booking Service
@@ -154,7 +144,7 @@ export class SmartOfficeStack extends cdk.Stack {
         targets: [roomBookingService],
         priority: 2,
         conditions: [elbv2.ListenerCondition.pathPatterns(['/rooms/*'])],
-        healthCheck: { path: '/health' },
+        healthCheck: { path: '/rooms/health' },
     });
 
     // Desk Booking Service
@@ -190,7 +180,7 @@ export class SmartOfficeStack extends cdk.Stack {
         targets: [deskBookingService],
         priority: 3,
         conditions: [elbv2.ListenerCondition.pathPatterns(['/desks/*'])],
-        healthCheck: { path: '/health' },
+        healthCheck: { path: '/desks/health' },
     });
 
     // Notification Service
@@ -215,42 +205,6 @@ export class SmartOfficeStack extends cdk.Stack {
         vpcSubnets: publicSubnets, 
         assignPublicIp: true,
         securityGroups: [ecsServiceSecurityGroup],
-    });
-
-    // Analytics Service
-    const analyticsExecutionRole = new iam.Role(this, 'AnalyticsTaskExecutionRole', {
-        assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-    });
-    analyticsExecutionRole.addManagedPolicy(iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'));
-    const analyticsTaskDef = new ecs.FargateTaskDefinition(this, 'AnalyticsTaskDef', {
-        executionRole: analyticsExecutionRole,
-    });
-    analyticsServiceRepo.grantPull(analyticsExecutionRole);
-    analyticsTaskDef.addContainer('AnalyticsContainer', {
-        image: ecs.ContainerImage.fromEcrRepository(analyticsServiceRepo, props?.imageTag || 'latest'),
-        environment: {
-            SQS_QUEUE_URL: analyticsQueue.queueUrl,
-            ANALYTICS_TABLE_NAME: analyticsTable.tableName,
-            JWT_SECRET: 'your-super-secret-key-for-local-dev',
-            DUMMY_VAR: '2', // Added to force redeployment
-        },
-        portMappings: [{ containerPort: 8000 }],
-    });
-    analyticsQueue.grantConsumeMessages(analyticsTaskDef.taskRole);
-    analyticsTable.grantReadWriteData(analyticsTaskDef.taskRole);
-    const analyticsService = new ecs.FargateService(this, 'AnalyticsService', { 
-        cluster, 
-        taskDefinition: analyticsTaskDef, 
-        vpcSubnets: publicSubnets, 
-        assignPublicIp: true,
-        securityGroups: [ecsServiceSecurityGroup],
-    });
-    listener.addTargets('AnalyticsTarget', {
-        port: 80,
-        targets: [analyticsService],
-        priority: 4,
-        conditions: [elbv2.ListenerCondition.pathPatterns(['/analytics/*'])],
-        healthCheck: { path: '/' },
     });
 
     // --- Outputs ---
