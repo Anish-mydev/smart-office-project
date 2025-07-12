@@ -4,19 +4,12 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'services/1-auth-service/**'
 
 jobs:
-  test-and-build:
+  build-and-deploy-auth-service:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [
-          '1-auth-service', 
-          '2-room-booking-service', 
-          '3-desk-booking-service', 
-          '4-notification-service'
-        ]
-        
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
@@ -26,23 +19,33 @@ jobs:
       with:
         node-version: '18'
 
-    
-
-    - name: Install Dependencies & Run Tests (Node.js)
+    - name: Install Dependencies & Run Tests
       run: |
-        cd services/${{ matrix.service }}
+        cd services/1-auth-service
         npm install
-        npm test # Assuming you have a test script
+        npm test
 
-    - name: Log in to Docker Hub
-      uses: docker/login-action@v2
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
       with:
-        username: Anish025
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-east-1
 
-    - name: Build and push Docker image
-      uses: docker/build-push-action@v4
-      with:
-        context: ./services/${{ matrix.service }}
-        push: true
-        tags: Anish025/smart-office-${{ matrix.service }}:latest
+    - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        ECR_REPOSITORY: smart-office-1-auth-service
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./services/1-auth-service
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+    - name: Deploy to ECS
+      run: |
+        aws ecs update-service --cluster SmartOfficeStack-SmartOfficeClusterF4234B69-BefGWrhGKH3a --service SmartOfficeStack-AuthService3C2B741A-fUAx44jnCQ3c --force-new-deployment --region us-east-1
