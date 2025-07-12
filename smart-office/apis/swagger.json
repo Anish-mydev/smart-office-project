@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "http://SmartO-Smart-K4IDcAF4swkL-135473292.us-east-1.elb.amazonaws.com",
+      "url": "http://SmartO-Smart-rGSDMQLKjaqA-2039407160.us-east-1.elb.amazonaws.com",
       "description": "Development server"
     }
   ],
@@ -28,6 +28,36 @@
         "responses": {
           "201": {
             "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      }
+    },
+    "/auth/register-admin": {
+      "post": {
+        "summary": "Register a new admin user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Admin user registered successfully",
             "content": {
               "application/json": {
                 "schema": {
