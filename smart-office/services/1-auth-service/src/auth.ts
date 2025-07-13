@@ -39,6 +39,38 @@ export const registerUser = async (req: Request, res: Response) => {
     }
 };
 
+export const registerAdminUser = async (req: Request, res: Response) => {
+    const { email, password, name } = req.body;
+    if (!email || !password || !name) {
+        return res.status(400).json({ message: 'Email, password, and name are required' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const role = 'Admin'; // Assign Admin role
+
+    const params = {
+        TableName: USERS_TABLE,
+        Item: {
+            email,
+            password: hashedPassword,
+            name,
+            role,
+        },
+        ConditionExpression: 'attribute_not_exists(email)',
+    };
+
+    try {
+        await ddbDocClient.send(new PutCommand(params));
+        res.status(201).json({ message: 'Admin user registered successfully' });
+    } catch (error: any) {
+        if (error.name === 'ConditionalCheckFailedException') {
+            return res.status(409).json({ message: 'User with this email already exists' });
+        }
+        console.error('Error registering admin user:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 export const loginUser = async (req: Request, res: Response) => {
     const { email, password } = req.body;
     if (!email || !password) {

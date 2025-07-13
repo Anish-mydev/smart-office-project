@@ -1,0 +1,107 @@
+{
+    "taskDefinition": {
+        "taskDefinitionArn": "arn:aws:ecs:us-east-1:155452520827:task-definition/SmartOfficeStackRoomBookingTaskDefD82142A0:48",
+        "containerDefinitions": [
+            {
+                "name": "RoomBookingContainer",
+                "image": "155452520827.dkr.ecr.us-east-1.amazonaws.com/smart-office-2-room-booking-service:latest",
+                "cpu": 0,
+                "links": [],
+                "portMappings": [
+                    {
+                        "containerPort": 3000,
+                        "hostPort": 3000,
+                        "protocol": "tcp"
+                    }
+                ],
+                "essential": true,
+                "entryPoint": [],
+                "command": [],
+                "environment": [
+                    {
+                        "name": "DYNAMODB_TABLE_NAME",
+                        "value": "Bookings"
+                    },
+                    {
+                        "name": "JWT_SECRET",
+                        "value": "your-super-secret-key-for-local-dev"
+                    },
+                    {
+                        "name": "SNS_TOPIC_ARN",
+                        "value": "arn:aws:sns:us-east-1:155452520827:SmartOfficeBookingEvents"
+                    }
+                ],
+                "environmentFiles": [],
+                "mountPoints": [],
+                "volumesFrom": [],
+                "secrets": [],
+                "dnsServers": [],
+                "dnsSearchDomains": [],
+                "extraHosts": [],
+                "dockerSecurityOptions": [],
+                "dockerLabels": {},
+                "ulimits": [],
+                "logConfiguration": {
+                    "logDriver": "awslogs",
+                    "options": {
+                        "awslogs-group": "SmartOfficeStack-RoomBookingTaskDefRoomBookingContainerLogGroup34A663C5-noLmisWECGA6",
+                        "awslogs-region": "us-east-1",
+                        "awslogs-stream-prefix": "smart-office-room-booking"
+                    },
+                    "secretOptions": []
+                },
+                "systemControls": [],
+                "credentialSpecs": []
+            }
+        ],
+        "family": "SmartOfficeStackRoomBookingTaskDefD82142A0",
+        "taskRoleArn": "arn:aws:iam::155452520827:role/SmartOfficeStack-RoomBookingTaskDefTaskRole4FEB5F6E-1UzU3gbNdqD1",
+        "executionRoleArn": "arn:aws:iam::155452520827:role/SmartOfficeStack-RoomBookingTaskExecutionRoleB428AF-ORCtySKjQrBs",
+        "networkMode": "awsvpc",
+        "revision": 48,
+        "volumes": [],
+        "status": "ACTIVE",
+        "requiresAttributes": [
+            {
+                "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+            },
+            {
+                "name": "ecs.capability.execution-role-awslogs"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.ecr-auth"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.17"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.task-iam-role"
+            },
+            {
+                "name": "ecs.capability.execution-role-ecr-pull"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+            },
+            {
+                "name": "ecs.capability.task-eni"
+            }
+        ],
+        "placementConstraints": [],
+        "compatibilities": [
+            "EC2",
+            "FARGATE"
+        ],
+        "requiresCompatibilities": [
+            "FARGATE"
+        ],
+        "cpu": "256",
+        "memory": "512",
+        "registeredAt": "2025-07-09T19:24:23.358000+05:30",
+        "registeredBy": "arn:aws:sts::155452520827:assumed-role/cdk-hnb659fds-cfn-exec-role-155452520827-us-east-1/AWSCloudFormation"
+    },
+    "tags": []
+}

@@ -1,0 +1,1 @@
+feat: Update swagger.json with register-admin endpoint and correct server URL

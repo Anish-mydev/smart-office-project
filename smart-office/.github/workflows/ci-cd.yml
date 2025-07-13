@@ -1,15 +1,18 @@
-name: Smart Office CI/CD
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'services/1-auth-service/**'
+      - 'services/**'
 
 jobs:
-  build-and-deploy-auth-service:
+  build-and-deploy:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [ "1-auth-service", "2-room-booking-service", "3-desk-booking-service", "4-notification-service" ]
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
@@ -21,7 +24,7 @@ jobs:
 
     - name: Install Dependencies & Run Tests
       run: |
-        cd services/1-auth-service
+        cd services/${{ matrix.service }}
         npm install
         npm test
 
@@ -40,12 +43,14 @@ jobs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: smart-office-1-auth-service
+        ECR_REPOSITORY: smart-office-${{ matrix.service }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./services/1-auth-service
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./services/${{ matrix.service }}
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
     - name: Deploy to ECS
       run: |
-        aws ecs update-service --cluster SmartOfficeStack-SmartOfficeClusterF4234B69-BefGWrhGKH3a --service SmartOfficeStack-AuthService3C2B741A-fUAx44jnCQ3c --force-new-deployment --region us-east-1
+        SERVICE_NAME=$(aws ecs list-services --cluster SmartOfficeStack-SmartOfficeClusterF4234B69-BefGWrhGKH3a --region us-east-1 --output text --query "serviceArns[?contains(@, 'Service') && contains(@, '${{ matrix.service }}')]" | xargs -n 1 basename)
+        aws ecs update-service --cluster SmartOfficeStack-SmartOfficeClusterF4234B69-BefGWrhGKH3a --service $SERVICE_NAME --force-new-deployment --region us-east-1
+      continue-on-error: true
