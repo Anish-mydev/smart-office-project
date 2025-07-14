@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
 import { ddbDocClient } from './database';
-import { PutCommand, ScanCommand, DeleteCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, ScanCommand, DeleteCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { ReturnValue } from '@aws-sdk/client-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { publishBookingCreatedEvent } from './sns';
 
 const BOOKINGS_TABLE = process.env.DYNAMODB_TABLE_NAME || 'Bookings';
+const DESKS_TABLE = process.env.DYNAMODB_DESKS_TABLE_NAME || 'Desks';
 
 interface AuthenticatedRequest extends Request {
     user?: {
@@ -12,6 +14,77 @@ interface AuthenticatedRequest extends Request {
         role: string;
     };
 }
+
+export const createDeskHandler = async (req: Request, res: Response) => {
+    const { location, capacity } = req.body;
+    if (!location || !capacity) {
+        return res.status(400).json({ message: 'Location and capacity are required' });
+    }
+
+    const deskId = uuidv4();
+    const params = {
+        TableName: DESKS_TABLE,
+        Item: {
+            deskId,
+            location,
+            capacity,
+            createdAt: new Date().toISOString(),
+        },
+    };
+
+    try {
+        await ddbDocClient.send(new PutCommand(params));
+        res.status(201).json({ message: 'Desk created successfully', deskId });
+    } catch (error) {
+        console.error('Error creating desk:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const getDesksHandler = async (req: Request, res: Response) => {
+    try {
+        const { Items } = await ddbDocClient.send(new ScanCommand({ TableName: DESKS_TABLE }));
+        res.status(200).json(Items);
+    } catch (error) {
+        console.error('Error fetching desks:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const updateDeskHandler = async (req: Request, res: Response) => {
+    const { deskId } = req.params;
+    const { location, capacity } = req.body;
+
+    const params = {
+        TableName: DESKS_TABLE,
+        Key: { deskId },
+        UpdateExpression: 'set #loc = :loc, #cap = :cap',
+        ExpressionAttributeNames: { '#loc': 'location', '#cap': 'capacity' },
+        ExpressionAttributeValues: { ':loc': location, ':cap': capacity },
+        ReturnValues: 'ALL_NEW' as ReturnValue,
+    };
+
+    try {
+        const { Attributes } = await ddbDocClient.send(new UpdateCommand(params));
+        res.status(200).json(Attributes);
+    } catch (error) {
+        console.error('Error updating desk:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const deleteDeskHandler = async (req: Request, res: Response) => {
+    const { deskId } = req.params;
+
+    try {
+        await ddbDocClient.send(new DeleteCommand({ TableName: DESKS_TABLE, Key: { deskId } }));
+        res.status(200).json({ message: 'Desk deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting desk:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 
 export const createBooking = async (req: AuthenticatedRequest, res: Response) => {
     const { deskId, date } = req.body;

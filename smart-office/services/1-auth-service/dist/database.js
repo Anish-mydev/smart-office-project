@@ -12,6 +12,6 @@ const region = process.env.AWS_REGION;
 const endpoint = process.env.DYNAMODB_ENDPOINT;
 const ddbClient = new client_dynamodb_1.DynamoDBClient({
     region,
-    endpoint,
+    endpoint, // This is ignored if not set (i.e., when in AWS)
 });
 exports.ddbDocClient = lib_dynamodb_1.DynamoDBDocumentClient.from(ddbClient);

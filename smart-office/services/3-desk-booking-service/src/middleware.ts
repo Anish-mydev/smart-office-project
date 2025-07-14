@@ -27,3 +27,10 @@ export const authenticateToken = (req: AuthenticatedRequest, res: Response, next
         next();
     });
 };
+
+export const adminOnly = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (req.user?.role !== 'Admin') {
+        return res.status(403).json({ message: 'Forbidden: Admins only' });
+    }
+    next();
+};

@@ -1,10 +1,90 @@
 import { Request, Response } from 'express';
 import { ddbDocClient } from './database';
-import { PutCommand, ScanCommand, DeleteCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, ScanCommand, DeleteCommand, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { publishBookingCreatedEvent } from './sns';
 
 const BOOKINGS_TABLE = process.env.DYNAMODB_TABLE_NAME || 'Bookings';
+const ROOMS_TABLE = process.env.DYNAMODB_ROOMS_TABLE_NAME || 'Rooms';
+
+// Extend Express Request type to include user from JWT
+interface AuthenticatedRequest extends Request {
+    user?: {
+        userId: string;
+        role: string;
+    };
+}
+
+export const createRoomHandler = async (req: Request, res: Response) => {
+    const { roomName, capacity } = req.body;
+    if (!roomName || !capacity) {
+        return res.status(400).json({ message: 'Room name and capacity are required' });
+    }
+
+    const roomId = uuidv4();
+    const params = {
+        TableName: ROOMS_TABLE,
+        Item: {
+            roomId,
+            roomName,
+            capacity,
+            createdAt: new Date().toISOString(),
+        },
+    };
+
+    try {
+        await ddbDocClient.send(new PutCommand(params));
+        res.status(201).json({ message: 'Room created successfully', roomId });
+    } catch (error) {
+        console.error('Error creating room:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const getRoomHandler = async (req: Request, res: Response) => {
+    try {
+        const { Items } = await ddbDocClient.send(new ScanCommand({ TableName: ROOMS_TABLE }));
+        res.status(200).json(Items);
+    } catch (error) {
+        console.error('Error fetching rooms:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const updateRoomHandler = async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+    const { roomName, capacity } = req.body;
+
+    const params = {
+        TableName: ROOMS_TABLE,
+        Key: { roomId },
+        UpdateExpression: 'set roomName = :name, #cap = :cap',
+        ExpressionAttributeNames: { '#cap': 'capacity' },
+        ExpressionAttributeValues: { ':name': roomName, ':cap': capacity },
+        ReturnValues: 'ALL_NEW' as any,
+    };
+
+    try {
+        const { Attributes } = await ddbDocClient.send(new UpdateCommand(params));
+        res.status(200).json(Attributes);
+    } catch (error) {
+        console.error('Error updating room:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
+export const deleteRoomHandler = async (req: Request, res: Response) => {
+    const { roomId } = req.params;
+
+    try {
+        await ddbDocClient.send(new DeleteCommand({ TableName: ROOMS_TABLE, Key: { roomId } }));
+        res.status(200).json({ message: 'Room deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting room:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 
 // Extend Express Request type to include user from JWT
 interface AuthenticatedRequest extends Request {

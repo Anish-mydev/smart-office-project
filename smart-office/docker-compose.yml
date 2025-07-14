@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=dynamodb,sns,sqs
+      - DEFAULT_REGION=us-east-1
+      
+    
+
   auth-service:
     build: ./services/1-auth-service
     container_name: auth-service
@@ -10,12 +21,11 @@ services:
       - AWS_REGION=us-east-1
       - DYNAMODB_TABLE_NAME=Users
       - JWT_SECRET=your-super-secret-key-for-local-dev
-      # For local DynamoDB
       - AWS_ACCESS_KEY_ID=dummy
       - AWS_SECRET_ACCESS_KEY=dummy
-      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - DYNAMODB_ENDPOINT=http://localstack:4566
     depends_on:
-      - dynamodb-local
+      - localstack
     volumes:
       - ./services/1-auth-service:/app
 
@@ -27,14 +37,15 @@ services:
     environment:
       - AWS_REGION=us-east-1
       - DYNAMODB_TABLE_NAME=Bookings
+      - DYNAMODB_ROOMS_TABLE_NAME=Rooms
       - SNS_TOPIC_ARN=arn:aws:sns:us-east-1:000000000000:SmartOfficeBookingEvents_Local
       - JWT_SECRET=your-super-secret-key-for-local-dev
-      # For local DynamoDB
       - AWS_ACCESS_KEY_ID=dummy
       - AWS_SECRET_ACCESS_KEY=dummy
-      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - DYNAMODB_ENDPOINT=http://localstack:4566
+      - SNS_ENDPOINT=http://localstack:4566
     depends_on:
-      - dynamodb-local
+      - localstack
     volumes:
       - ./services/2-room-booking-service:/app
 
@@ -46,37 +57,18 @@ services:
     environment:
       - AWS_REGION=us-east-1
       - DYNAMODB_TABLE_NAME=Bookings
+      - DYNAMODB_DESKS_TABLE_NAME=Desks
       - SNS_TOPIC_ARN=arn:aws:sns:us-east-1:000000000000:SmartOfficeBookingEvents_Local
       - JWT_SECRET=your-super-secret-key-for-local-dev
-      # For local DynamoDB
       - AWS_ACCESS_KEY_ID=dummy
       - AWS_SECRET_ACCESS_KEY=dummy
-      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - DYNAMODB_ENDPOINT=http://localstack:4566
+      - SNS_ENDPOINT=http://localstack:4566
     depends_on:
-      - dynamodb-local
+      - localstack
     volumes:
       - ./services/3-desk-booking-service:/app
 
-  notification-service:
-    build: ./services/4-notification-service
-    container_name: notification-service
-    environment:
-      - AWS_REGION=us-east-1
-      - SQS_QUEUE_URL=http://localhost:4566/000000000000/NotificationQueue_Local
-      # For local SQS (if using with LocalStack, etc.)
-      - AWS_ACCESS_KEY_ID=dummy
-      - AWS_SECRET_ACCESS_KEY=dummy
-    volumes:
-      - ./services/4-notification-service:/app
+  
 
-  dynamodb-local:
-    image: amazon/dynamodb-local:latest
-    container_name: dynamodb-local
-    ports:
-      - "8001:8000"
-    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
-    volumes:
-      - dynamodb_data:/home/dynamodblocal/data
 
-volumes:
-  dynamodb_data:
