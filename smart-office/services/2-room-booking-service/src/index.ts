@@ -13,6 +13,11 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 
+app.use((req, res, next) => {
+  console.log(`Incoming Request: ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 app.get('/rooms/health', (req, res) => res.status(200).send('OK'));
 
 // Room booking routes

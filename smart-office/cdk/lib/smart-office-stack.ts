@@ -38,19 +38,9 @@ export class SmartOfficeStack extends cdk.Stack {
     
 
     // --- DynamoDB Tables ---
-    const usersTable = new dynamodb.Table(this, 'UsersTable', {
-        tableName: 'Users',
-        partitionKey: { name: 'email', type: dynamodb.AttributeType.STRING },
-        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const bookingsTable = new dynamodb.Table(this, 'BookingsTable', {
-        tableName: 'Bookings',
-        partitionKey: { name: 'bookingId', type: dynamodb.AttributeType.STRING },
-        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    const usersTable = dynamodb.Table.fromTableName(this, 'UsersTable', 'Users');
+    const bookingsTable = dynamodb.Table.fromTableName(this, 'BookingsTable', 'Bookings');
+    const roomsTable = dynamodb.Table.fromTableName(this, 'RoomsTable', 'Rooms');
 
     // --- SNS and SQS ---
     const bookingTopic = new sns.Topic(this, 'BookingTopic', { topicName: 'SmartOfficeBookingEvents' });
@@ -131,6 +121,7 @@ export class SmartOfficeStack extends cdk.Stack {
         portMappings: [{ containerPort: 3000 }],
     });
     bookingsTable.grantReadWriteData(roomBookingTaskDef.taskRole);
+    roomsTable.grantReadWriteData(roomBookingTaskDef.taskRole);
     bookingTopic.grantPublish(roomBookingTaskDef.taskRole);
     const roomBookingService = new ecs.FargateService(this, 'RoomBookingService', { 
         cluster, 
@@ -143,7 +134,7 @@ export class SmartOfficeStack extends cdk.Stack {
         port: 80,
         targets: [roomBookingService],
         priority: 2,
-        conditions: [elbv2.ListenerCondition.pathPatterns(['/rooms/*'])],
+        conditions: [elbv2.ListenerCondition.pathPatterns(['/rooms', '/rooms/*'])],
         healthCheck: { path: '/rooms/health' },
     });
 

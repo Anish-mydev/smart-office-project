@@ -1,4 +1,3 @@
-
 {
   "openapi": "3.0.0",
   "info": {
@@ -50,6 +49,26 @@
         "responses": {
           "200": { "$ref": "#/components/responses/AuthResponse" },
           "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+     "/auth/register-admin": {
+      "post": {
+        "summary": "Register a new admin user",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserRegistration"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "$ref": "#/components/responses/AuthResponse" },
+          "400": { "$ref": "#/components/responses/BadRequest" }
         }
       }
     },
