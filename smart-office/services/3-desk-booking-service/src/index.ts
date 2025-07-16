@@ -22,7 +22,7 @@ app.delete('/desks/bookings/:bookingId', authenticateToken, deleteBooking);
 
 // Admin routes for managing desks
 app.post('/desks', authenticateToken, adminOnly, createDeskHandler);
-app.get('/desks', authenticateToken, adminOnly, getDesksHandler);
+app.get('/desks', authenticateToken, getDesksHandler);
 app.put('/desks/:deskId', authenticateToken, adminOnly, updateDeskHandler);
 app.delete('/desks/:deskId', authenticateToken, adminOnly, deleteDeskHandler);
 

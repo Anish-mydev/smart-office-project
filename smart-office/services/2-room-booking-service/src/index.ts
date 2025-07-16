@@ -27,7 +27,7 @@ app.delete('/rooms/bookings/:bookingId', authenticateToken, deleteBooking);
 
 // Admin routes for managing rooms
 app.post('/rooms', authenticateToken, adminOnly, createRoomHandler);
-app.get('/rooms', authenticateToken, adminOnly, getRoomHandler);
+app.get('/rooms', authenticateToken, getRoomHandler);
 app.put('/rooms/:roomId', authenticateToken, adminOnly, updateRoomHandler);
 app.delete('/rooms/:roomId', authenticateToken, adminOnly, deleteRoomHandler);
 

@@ -28,6 +28,7 @@ export const createDeskHandler = async (req: Request, res: Response) => {
             deskId,
             location,
             capacity,
+            isBooked: false, // Initially not booked
             createdAt: new Date().toISOString(),
         },
     };
@@ -94,24 +95,43 @@ export const createBooking = async (req: AuthenticatedRequest, res: Response) =>
         return res.status(400).json({ message: 'Desk ID, date, and user ID are required' });
     }
 
-    const bookingId = uuidv4();
-    const bookingType = 'DESK';
-
-    const params = {
-        TableName: BOOKINGS_TABLE,
-        Item: {
-            bookingId,
-            userId,
-            resourceId: deskId,
-            bookingType,
-            date,
-            createdAt: new Date().toISOString(),
-        },
-    };
-
     try {
+        // Check if the desk exists and is available
+        const { Item: desk } = await ddbDocClient.send(new GetCommand({ TableName: DESKS_TABLE, Key: { deskId } }));
+
+        if (!desk) {
+            return res.status(404).json({ message: 'Desk not found' });
+        }
+
+        if (desk.isBooked) {
+            return res.status(409).json({ message: 'Desk is already booked' });
+        }
+
+        const bookingId = uuidv4();
+        const bookingType = 'DESK';
+
+        const params = {
+            TableName: BOOKINGS_TABLE,
+            Item: {
+                bookingId,
+                userId,
+                resourceId: deskId,
+                bookingType,
+                date,
+                createdAt: new Date().toISOString(),
+            },
+        };
+
         await ddbDocClient.send(new PutCommand(params));
-        
+
+        // Update the desk's booking status
+        await ddbDocClient.send(new UpdateCommand({
+            TableName: DESKS_TABLE,
+            Key: { deskId },
+            UpdateExpression: 'set isBooked = :booked',
+            ExpressionAttributeValues: { ':booked': true },
+        }));
+
         await publishBookingCreatedEvent(params.Item);
 
         res.status(201).json({ message: 'Desk booking created successfully', bookingId });
@@ -159,6 +179,15 @@ export const deleteBooking = async (req: AuthenticatedRequest, res: Response) =>
         }
 
         await ddbDocClient.send(new DeleteCommand({ TableName: BOOKINGS_TABLE, Key: { bookingId } }));
+
+        // Update the desk's booking status to not booked
+        await ddbDocClient.send(new UpdateCommand({
+            TableName: DESKS_TABLE,
+            Key: { deskId: Item.resourceId },
+            UpdateExpression: 'set isBooked = :booked',
+            ExpressionAttributeValues: { ':booked': false },
+        }));
+
         res.status(200).json({ message: 'Desk booking deleted successfully' });
     } catch (error) {
         console.error('Error deleting desk booking:', error);

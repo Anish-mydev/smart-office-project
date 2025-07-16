@@ -28,6 +28,7 @@ export const createRoomHandler = async (req: Request, res: Response) => {
             roomId,
             roomName,
             capacity,
+            isBooked: false, // Initially not booked
             createdAt: new Date().toISOString(),
         },
     };
@@ -102,24 +103,43 @@ export const createBooking = async (req: AuthenticatedRequest, res: Response) =>
         return res.status(400).json({ message: 'Room ID, start time, end time, and user ID are required' });
     }
 
-    const bookingId = uuidv4();
-    const bookingType = 'ROOM';
-
-    const params = {
-        TableName: BOOKINGS_TABLE,
-        Item: {
-            bookingId,
-            userId,
-            resourceId: roomId,
-            bookingType,
-            startTime,
-            endTime,
-            createdAt: new Date().toISOString(),
-        },
-    };
-
     try {
+        // Check if the room exists and is available
+        const { Item: room } = await ddbDocClient.send(new GetCommand({ TableName: ROOMS_TABLE, Key: { roomId } }));
+
+        if (!room) {
+            return res.status(404).json({ message: 'Room not found' });
+        }
+
+        if (room.isBooked) {
+            return res.status(409).json({ message: 'Room is already booked' });
+        }
+
+        const bookingId = uuidv4();
+        const bookingType = 'ROOM';
+
+        const params = {
+            TableName: BOOKINGS_TABLE,
+            Item: {
+                bookingId,
+                userId,
+                resourceId: roomId,
+                bookingType,
+                startTime,
+                endTime,
+                createdAt: new Date().toISOString(),
+            },
+        };
+
         await ddbDocClient.send(new PutCommand(params));
+
+        // Update the room's booking status
+        await ddbDocClient.send(new UpdateCommand({
+            TableName: ROOMS_TABLE,
+            Key: { roomId },
+            UpdateExpression: 'set isBooked = :booked',
+            ExpressionAttributeValues: { ':booked': true },
+        }));
         
         // Publish event to SNS
         await publishBookingCreatedEvent(params.Item);
@@ -171,6 +191,15 @@ export const deleteBooking = async (req: AuthenticatedRequest, res: Response) =>
         }
 
         await ddbDocClient.send(new DeleteCommand({ TableName: BOOKINGS_TABLE, Key: { bookingId } }));
+
+        // Update the room's booking status to not booked
+        await ddbDocClient.send(new UpdateCommand({
+            TableName: ROOMS_TABLE,
+            Key: { roomId: Item.resourceId },
+            UpdateExpression: 'set isBooked = :booked',
+            ExpressionAttributeValues: { ':booked': false },
+        }));
+
         res.status(200).json({ message: 'Booking deleted successfully' });
     } catch (error) {
         console.error('Error deleting booking:', error);
